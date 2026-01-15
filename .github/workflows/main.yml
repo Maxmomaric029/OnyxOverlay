@@ -1,0 +1,50 @@
+name: Build Onyx IPA
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compilar IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      - name: Configurar Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Compilar Proyecto
+        run: |
+          # Entramos en la carpeta principal si es necesario o compilamos directo
+          # Basado en tu foto, el .xcodeproj está dentro de la carpeta raíz OnyxOverlay
+          
+          xcodebuild -project "OnyxOverlay/OnyxOverlay.xcodeproj" \
+            -scheme "OnyxOverlay" \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath $PWD/build/OnyxOverlay.xcarchive \
+            clean archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Crear IPA (Payload)
+        run: |
+          mkdir -p build/Payload
+          mv build/OnyxOverlay.xcarchive/Products/Applications/OnyxOverlay.app build/Payload/
+          
+          # Ir a la carpeta build para zipear
+          cd build
+          zip -r OnyxOverlay.ipa Payload
+
+      - name: Subir IPA a GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: OnyxOverlay-IPA
+          path: build/OnyxOverlay.ipa
